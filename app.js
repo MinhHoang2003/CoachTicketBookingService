@@ -1,26 +1,27 @@
 const express = require('express')
-const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const app = express()
 
-const uri = 'mongodb+srv://new_user:user1234@nodetuts.lx1xc.mongodb.net/coachticketdb?retryWrites=true&w=majority'
 const servicePort = 3000
 
-const companyRouter = require('./routes/companyRoutes')
+const routeRouter = require('./routes/route_routes')
+const userRouter = require('./routes/user_routes')
+const locationRouter = require('./routes/location_routes')
+
+const { static } = require('express')
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
+// app.use("./public", static("public"))
 
-mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then((result) => {
-        console.log('Databse is connected')
-        app.listen(servicePort)
-    })
-    .catch((error) => {
-        console.log('Error connect database: ', error)
-    })
+app.listen(servicePort)
 
-app.use('/companys', companyRouter)
+// app.use('/companys', companyRouter)
+// app.use('/coachs', coachRouter)
+// app.use('/positions', positionRouter)
+app.use('/locations', locationRouter)
+app.use('/routes', routeRouter)
+app.use('/users', userRouter)
 
 
 
