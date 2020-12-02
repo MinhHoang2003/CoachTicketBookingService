@@ -56,17 +56,13 @@ router.post('/login', (req, res) => {
     let password = req.body.password
     user.login(username, password, (result) => {
         if (result === null) {
-            res.status = 200
+            res.status = 500
             res.json({
-                login_status: 0,
                 message: result
             })
         } else {
             res.status = 200
-            res.json({
-                login_status: 1,
-                message: result
-            })
+            res.json(result)
         }
     })
 })

@@ -1,10 +1,13 @@
 const express = require('express')
 const { result } = require('lodash')
-const Tickets = require('../models/tickets')
+const Ticket = require('../controler/ticket')
 const router = express.Router()
 
-router.get('/', (req, res) => {
-    Tickets.find()
+const ticket = new Ticket()
+
+router.get('', (req, res) => {
+    let phoneNumber = req.query["phone_number"]
+    ticket.getTickets(phoneNumber)
         .then((result) => {
             res.status = 200
             res.json(result)
@@ -14,18 +17,27 @@ router.get('/', (req, res) => {
         })
 })
 
-router.post('/', (req, res) => {
-    const ticket = {
-        main_infomation: req.body.main_infomation,
-        price :req.body.price,
-        has_paid: req.body.has_paid,
-    }
-    Tickets.create(ticket)
+router.get('/detail', (req, res) => {
+    let ticketId = req.query["id"]
+    ticket.getTicketDetail(ticketId)
         .then((result) => {
-            console.log('Post request: ', result)
-        }) 
-        .catch((error) => {
-            console.log('Error : Post new ticket : ', error)
+            res.status = 200
+            res.json(result)
+        })
+        .catch((err) => {
+            console.log('Get ticket detail : ', err)
+        })
+})
+
+router.post('/', (req, res) => {
+    ticket.requestTicket(req.body)
+        .then(result => {
+            res.status = 200
+            res.json(result)
+        })
+        .catch(err => {
+            res.status = 500
+            res.json(err)
         })
 })
 
