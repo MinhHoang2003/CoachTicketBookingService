@@ -2,7 +2,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const app = express()
 
-const servicePort = 3000
+const servicePort = 5000
 
 const routeRouter = require('./routes/route_routes')
 const coachRouter = require('./routes/coachRoutes')
