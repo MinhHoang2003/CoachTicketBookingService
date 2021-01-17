@@ -20,6 +20,7 @@
     "mongose": "0.0.2-security",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
+    "mysql2": "^2.2.5",
     "nodemon": "^2.0.4",
     "util.promisify": "^1.0.1"
   }
