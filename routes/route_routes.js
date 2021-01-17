@@ -1,5 +1,6 @@
 const express = require('express')
 const { result } = require('lodash')
+const { Error } = require('mongoose')
 const Route = require('../controler/route')
 const router = express.Router()
 
@@ -11,9 +12,13 @@ router.get('/search', (req, res) => {
     let date = req.query['date']
 
     console.log(pickLocation, destination, date)
+
     route.find(pickLocation, destination, date)
         .then(result => {
-            res.json(result)
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).send(new Error(err))
         })
 })
 
@@ -33,20 +38,68 @@ router.get('/position', (req, res) => {
         })
 })
 
-router.post('/', (req, res) => {
-    const router = {
-        name: req.body.name,
-        coach_id: req.body.coach_id,
-        start_time: req.body.start_time,
-        estimate_end_time: req.body.estimate_end_time,
-        stop_station: req.body.stop_station
-    }
-    route.create(router)
+router.put('/:id', (req, res) => {
+    let id = req.params["id"]
+    route.update(req.body, id)
         .then((result) => {
-            console.log('Post request: ', result)
+            res.status(200).json(result)
         })
         .catch((error) => {
-            console.log('Error : Post new company : ', error)
+            res.status(500).json(new Error(error))
+        })
+})
+
+router.get('/get', (req, res) => {
+    let phoneNumber = req.query["phone_number"]
+    let date = req.query["date"]
+    route.getRoutesForDriver(phoneNumber, date)
+        .then(result => {
+            res.status(200).send(result)
+        })
+        .catch(err => {
+            res.status(404).send(new Error(err))
+        })
+
+})
+
+router.get('/', (req, res) => {
+    route.findAll()
+        .then(result => {
+            res.status(200).send(result)
+        }).catch(err => {
+            console.log(err)
+            res.status(500).send(new Error(err))
+        })
+})
+
+
+router.get('/:id', (req, res) => {
+    let id = req.params["id"]
+    route.finById(id)
+        .then(result => {
+            res.status(200).send(result)
+        }).catch(err => {
+            res.status(500).send(new Error(err))
+        })
+})
+
+router.post('/add', (req, res) => {
+    route.add(req.body)
+        .then(result => {
+            res.status(200).send("" + result.insertId)
+        }).catch(err => {
+            res.status(500).send(new Error(err))
+        })
+})
+
+router.post('/remove', (req, res) => {
+    let id = req.query["id"]
+    route.remove(id)
+        .then(result => {
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).send(new Error(err))
         })
 })
 

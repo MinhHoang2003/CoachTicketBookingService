@@ -1,7 +1,5 @@
-const { Error } = require('mongoose')
 const pool = require('./coonection_pool')
 const { asyncForEach, formatDate } = require('./utils')
-
 
 function Ticket() { }
 
@@ -18,7 +16,8 @@ Ticket.prototype = {
             user_id: ticket.user_id
         }
         const positionCodes = ticket.position_code
-        console.log(requestTicket)
+        let positionCheckResult = await this.checkPositionOfTicket(positionCodes, ticket.route_id, ticket.date)
+        if (!positionCheckResult) throw new Error("This position has been choose")
         try {
             let ticketResult = await this.createTicketData(requestTicket)
             console.log(ticketResult)
@@ -32,6 +31,15 @@ Ticket.prototype = {
         }
     },
 
+    checkPositionOfTicket: async function (positions, routeId, date) {
+        let query = "select position_code from position_of_ticket where ticket_id " +
+            "in (select id from tickets where route_id = ? and date = ?) " +
+            "and position_code in (?); "
+        let result = await pool.query(query, [routeId, date, positions])
+        if (typeof result !== undefined && result.length > 0) return false
+        else return true
+    },
+
     createTicketData: async function (ticket) {
         let query = "INSERT INTO tickets(route_id, date, has_paid, price, pick_id, destination_id, user_id) values(?,?,?,?,?,?,?);"
         return pool.query(query, [ticket.route_id, ticket.date, ticket.has_paid, ticket.price, ticket.pick_id, ticket.destination_id, ticket.user_id])
@@ -43,9 +51,9 @@ Ticket.prototype = {
     },
 
     getTickets: async function (phoneNumber) {
-        let query = "select distinct tickets.id, tickets.route_id, tickets.date, a.city as start , b.city as end" +
-            " from tickets, (select * from stop_stations where stop_station_type = 0 ) as a , (select * from stop_stations where stop_station_type = 3) as b" +
-            " where tickets.user_id = ? and tickets.route_id = a.route_id order by date desc;"
+        let query = "select * " +
+            " from tickets " +
+            " where tickets.user_id = ? ;"
 
         let tickets = await pool.query(query, phoneNumber)
 
@@ -55,6 +63,20 @@ Ticket.prototype = {
             let date = formatDate(value.date)
             tickets[index]['position_code'] = positionsCode
             tickets[index]['date'] = date
+            const pickLocation = await this.getLocationById(value['pick_id'])
+            const destination = await this.getLocationById(value['destination_id'])
+            tickets[index]['pick_location'] = pickLocation[0]
+            tickets[index]['destination_location'] = destination[0]
+            delete tickets[index].pick_id
+            delete tickets[index].destination_id
+
+            const startLocation = await this.getMaxTimeOfLocation(value.route_id)
+            const endLocation = await this.getMinTimeOfLocation(value.route_id)
+
+            // console.log(startLocation, value.id)
+            tickets[index]['start'] = startLocation[0].detail_location
+            tickets[index]['end'] = endLocation[0].detail_location
+
         })
         return tickets;
     },
@@ -66,11 +88,38 @@ Ticket.prototype = {
     },
 
     getTicketDetail: async function (ticketId) {
-        let query = "select tickets.*, a.city as start, b.city as end from tickets, " +
-        " (select * from stop_stations where stop_station_type = 0 ) as a , " +
-        " (select * from stop_stations where stop_station_type = 3) as b " +
-        " where tickets.id = ? and tickets.route_id = a.route_id and a.route_id = b.route_id;"
+        let query = "select tickets.* from tickets " +
+            " where tickets.id = ? ;"
         let result = await pool.query(query, ticketId)
+        console.log(result)
+        if (typeof result !== 'undefined' && result.length > 0) {
+            let ticket = result[0]
+            const pickLocation = await this.getLocationById(ticket['pick_id'])
+            const destination = await this.getLocationById(ticket['destination_id'])
+            ticket['pick_location'] = pickLocation[0]
+            ticket['destination_location'] = destination[0]
+            delete ticket.pick_id
+            delete ticket.destination_id
+            ticket.date = formatDate(ticket.date)
+            const positions = await this.getPositionOfTicket(ticket.id)
+            ticket['position_code'] = positions.map(value => value.position_code)
+
+
+            const startLocation = await this.getMaxTimeOfLocation(ticket.route_id)
+            const endLocation = await this.getMinTimeOfLocation(ticket.route_id)
+
+            // console.log(startLocation, value.id)
+            ticket['start'] = startLocation[0].detail_location
+            ticket['end'] = endLocation[0].detail_location
+
+            return ticket
+        } else throw new Error('wrong id request.')
+    },
+
+    checkTicket: async function (ticketId, date) {
+        let query = "select tickets.* from tickets " +
+            "where tickets.id = ?  and tickets.date = ?;"
+        let result = await pool.query(query, [ticketId, date])
         console.log(result)
         if (typeof result !== 'undefined' && result.length > 0) {
             let ticket = result[0]
@@ -90,7 +139,45 @@ Ticket.prototype = {
     getLocationById: async function (id) {
         let query = "select * from stop_stations where id = ?;"
         return pool.query(query, id)
-    }
+    },
+
+    getTicketsForRoute: async function (routeId, date) {
+        let query = "select tickets.* from tickets where tickets.route_id = ? and tickets.date = ?;"
+        let tickets = await pool.query(query, [routeId, date])
+        if (typeof tickets !== 'undefined' && tickets.length > 0) {
+            await asyncForEach(tickets, async (value, index) => {
+                const pickLocation = await this.getLocationById(value['pick_id'])
+                const destination = await this.getLocationById(value['destination_id'])
+                tickets[index]['pick_location'] = pickLocation[0]
+                tickets[index]['destination_location'] = destination[0]
+                delete tickets[index].pick_id
+                delete tickets[index].destination_id
+                const positions = await this.getPositionOfTicket(value.id)
+                tickets[index]['position_code'] = positions.map(value => value.position_code)
+            })
+        }
+        return tickets
+    },
+
+    payTicket: async function (ticketId) {
+        let query = "update tickets set has_paid = 1 where id = ?"
+        return pool.query(query, ticketId)
+    },
+
+    countTicketOfLocation: async function (locationId, date) {
+        let query = "select count(tickets.id) as number from tickets where tickets.pick_id = ? and date = ?;"
+        return pool.query(query, [locationId, date])
+    },
+
+    getMaxTimeOfLocation: async function (routeId) {
+        let query = "SELECT stop_stations.* FROM stop_stations WHERE stop_stations.time = (select max(time) from stop_stations where route_id = ?);"
+        return pool.query(query, [routeId])
+    },
+
+    getMinTimeOfLocation: async function (routeId) {
+        let query = "SELECT stop_stations.* FROM stop_stations WHERE stop_stations.time = (select min(time) from stop_stations where route_id = ?);"
+        return pool.query(query, [routeId])
+    },
 }
 
 module.exports = Ticket

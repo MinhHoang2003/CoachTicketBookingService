@@ -5,11 +5,29 @@ const router = express.Router()
 const user = new User()
 
 router.get('/', (req, res) => {
-    res.status = 200
-    res.json({
-        message: 'get new users'
-    })
+    let role = req.query["role"]
+    console.log(role)
+    user.findAll(role)
+        .then(result => {
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).json(new Error(err))
+        })
 })
+
+router.get('/detail', (req, res) => {
+    let id = req.query["id"]
+    console.log(id)
+    user.findOne(id)
+        .then(result => {
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).json(new Error(err))
+        })
+})
+
 
 router.get('/:phone_number', (req, res) => {
     let phoneNumber = req.params['phone_number']
@@ -54,17 +72,42 @@ router.post('/register', (req, res) => {
 router.post('/login', (req, res) => {
     let username = req.body.phone_number
     let password = req.body.password
-    user.login(username, password, (result) => {
-        if (result === null) {
-            res.status = 500
-            res.json({
-                message: result
-            })
-        } else {
-            res.status = 200
-            res.json(result)
-        }
+    user.login(username, password)
+    .then(result => {
+        console.log("complete : ", result)
+        res.status(200).send(result)
+    }).catch(err => {
+        console.log(err)
+        res.status(500).send(err.message)
     })
+})
+
+
+router.put('/update', (req, res) => {
+    let body = req.body
+    let userId = req.query["id"]
+    user.update(body, userId)
+        .then(result => {
+            console.log(result)
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).json(new Error(err))
+        })
+})
+
+router.put('/updateWithPassword', (req, res) => {
+    let body = req.body
+    let userId = req.query["id"]
+    let pass = req.query["password"]
+    user.updateWithPassword(body, pass, userId)
+        .then(result => {
+            console.log(result)
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).send(new Error(err.message))
+        })
 })
 
 module.exports = router
