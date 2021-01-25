@@ -1,6 +1,6 @@
 const { route } = require('../routes/route_routes');
 const pool = require('./coonection_pool');
-const { asyncForEach } = require('./utils');
+const { asyncForEach, dateNow } = require('./utils');
 
 const Location = require('./location')
 const location = new Location()
@@ -10,11 +10,10 @@ Route.prototype = {
 
     find: async function (pickLocation, destination, date) {
         let routes = await this.getRoutes(pickLocation, destination)
-        console.log(routes)
         await asyncForEach(routes, async (element, index) => {
             let remain = await this.remainingPosition(element.id, date)
             if (remain.length > 0) {
-                routes[index]['remain'] = remain.pick
+                routes[index]['remain'] = remain[0].pick
             } else {
                 routes[index]['remain'] = 0
             }
@@ -32,6 +31,19 @@ Route.prototype = {
                 routes[index]['end_address'] = end[0].detail_location
             }
         });
+        var today = new Date();
+        var time =
+          (today.getHours() < 10 ? '0' : '') +
+          today.getHours() +
+          ':' +
+          (today.getMinutes() < 10 ? '0' : '') +
+          today.getMinutes() +
+          ':' +
+          '00';
+        let dateToday = dateNow();
+        if (dateToday === date) {
+            routes = routes.filter(item => item['start_time'] >= time)
+        }
         return routes
     },
     getRoutes: async function (pickLocation, destination) {
@@ -46,7 +58,7 @@ Route.prototype = {
     },
 
     remainingPosition: async function (id, date) {
-        let query = "select count(id) as pick from tickets where route_id = ? and date = ? group by route_id"
+        let query = "select count(id) as pick from tickets where route_id = ? and date = ? and has_paid = 1 group by route_id"
         return pool.query(query, [id, date])
     },
     getPosition: async function (route_id, date) {
@@ -133,8 +145,8 @@ Route.prototype = {
     },
 
     update: async function (body, oldId) {
-        let query = "UPDATE routes SET coach_id = ?, start_time = ?, estimate_end_time =? , price =? WHERE id = ?;"
-        return pool.query(query, [body.coach_id, body.start_time, body.estimate_end_time, body.price, oldId])
+        let query = "UPDATE routes SET coach_id = ?, price =? WHERE id = ?;"
+        return pool.query(query, [body.coach_id, body.price, oldId])
     },
 
     add: async function (body) {

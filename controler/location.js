@@ -8,13 +8,13 @@ Location.prototype = {
 
     findPickLocation: async function (routeId) {
         let query = "select * from stop_stations where route_id = ? " +
-            "and ( stop_station_type = 0 or stop_station_type = 1) order by time"
+            "and stop_station_type = 1 order by time"
         return pool.query(query, routeId)
     },
 
     findDestination: async function (routeId) {
         let query = "select * from stop_stations where route_id = ? " +
-            "and ( stop_station_type = 2 or stop_station_type = 3) order by time"
+            "and stop_station_type = 2 order by time"
         return pool.query(query, routeId)
     },
 
@@ -22,7 +22,7 @@ Location.prototype = {
         let locations = await this.findPickLocation(routeId)
         console.log(locations)
         await asyncForEach(locations, async (value, index) => {
-            let number = await ticket.countTicketOfLocation(value.id, date)
+            let number = await ticket.countTicketOfPickLocation(value.id, date)
             console.log(number)
             locations[index]['number'] = number[0].number
         })
@@ -33,7 +33,7 @@ Location.prototype = {
         let locations = await this.findDestination(routeId)
         console.log(locations)
         await asyncForEach(locations, async (value, index) => {
-            let number = await ticket.countTicketOfLocation(value.id, date)
+            let number = await ticket.countTicketOfDestinationLocation(value.id, date)
             console.log(number)
             locations[index]['number'] = number[0].number
         })
@@ -133,7 +133,7 @@ Location.prototype = {
         if (typeof canRemove != undefined && canRemove.length <= 0) {
             let query = "DELETE FROM stop_stations WHERE id = ?";
             return pool.query(query, id)
-        } else return new Error("Cannot remove this location")
+        } else throw new Error("Cannot remove this location")
     },
 
     checkCanRemoveLocation: async function (id) {

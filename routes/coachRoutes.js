@@ -7,7 +7,6 @@ const { route } = require('./location_routes')
 const coach = new Coach()
 
 router.get('/', (req, res) => {
-    console.log("indie get coachS")
     coach.findAll()
         .then((result) => {
             res.status(200).json(result)
@@ -19,7 +18,6 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
     let id = req.params["id"]
-    console.log("indie get coachS", id)
     coach.findOne(id)
         .then((result) => {
             res.status(200).json(result)
@@ -33,8 +31,6 @@ router.get('/:id', (req, res) => {
 router.put('/update', (req, res) => {
     let body = req.body
     let coachId = req.query["coachId"]
-    console.log(coachId)
-    console.log(body)
     coach.update(body, coachId)
         .then(result => {
             res.status(200).json(result)

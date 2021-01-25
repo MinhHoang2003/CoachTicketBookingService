@@ -74,4 +74,16 @@ router.put('/pay', (req, res) => {
             res.status(500).send(new Error(err.message))
         })
 })
+
+router.put('/remove', (req, res) => {
+    let ticketId = req.query["id"]
+    ticket.removeTicket(ticketId)
+        .then(result => {
+            res.status(200).json(result)
+        })
+        .catch(err => {
+            res.status(500).send(new Error(err.message))
+        })
+})
+
 module.exports = router

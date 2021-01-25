@@ -35,8 +35,8 @@ User.prototype = {
             let isLogin = await bcrypt.compareSync(password, user[0].password)
             if (isLogin) {
                 return user[0]
-            } else return new Error("Wrong password")
-        } else return new Error('Wrong phone number')
+            } else throw new Error("Wrong password")
+        } else throw new Error('Wrong phone number')
     },
 
     findAll: async function (type) {

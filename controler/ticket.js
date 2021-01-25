@@ -53,7 +53,7 @@ Ticket.prototype = {
     getTickets: async function (phoneNumber) {
         let query = "select * " +
             " from tickets " +
-            " where tickets.user_id = ? ;"
+            " where tickets.user_id = ? and has_paid = 1;"
 
         let tickets = await pool.query(query, phoneNumber)
 
@@ -142,7 +142,7 @@ Ticket.prototype = {
     },
 
     getTicketsForRoute: async function (routeId, date) {
-        let query = "select tickets.* from tickets where tickets.route_id = ? and tickets.date = ?;"
+        let query = "select tickets.* from tickets where tickets.route_id = ? and tickets.date = ? and has_paid = 1;"
         let tickets = await pool.query(query, [routeId, date])
         if (typeof tickets !== 'undefined' && tickets.length > 0) {
             await asyncForEach(tickets, async (value, index) => {
@@ -164,8 +164,13 @@ Ticket.prototype = {
         return pool.query(query, ticketId)
     },
 
-    countTicketOfLocation: async function (locationId, date) {
-        let query = "select count(tickets.id) as number from tickets where tickets.pick_id = ? and date = ?;"
+    countTicketOfPickLocation: async function (locationId, date) {
+        let query = "select count(tickets.id) as number from tickets where tickets.pick_id = ? and date = ? and has_paid = 1;"
+        return pool.query(query, [locationId, date])
+    },
+
+    countTicketOfDestinationLocation: async function (locationId, date) {
+        let query = "select count(tickets.id) as number from tickets where tickets.destination_id = ? and date = ? and has_paid = 1;"
         return pool.query(query, [locationId, date])
     },
 
@@ -178,6 +183,11 @@ Ticket.prototype = {
         let query = "SELECT stop_stations.* FROM stop_stations WHERE stop_stations.time = (select min(time) from stop_stations where route_id = ?);"
         return pool.query(query, [routeId])
     },
+
+    removeTicket: async function (ticketId) {
+        let query = "DELETE FROM tickets WHERE id = ? AND has_paid = 0";
+        return pool.query(query, ticketId)
+    }
 }
 
 module.exports = Ticket
